@@ -303,9 +303,47 @@ class Nanoleaf:
         self._color_temperature_max = data["state"]["ct"]["max"]
         self._color_temperature_min = data["state"]["ct"]["min"]
         self._color_mode = data["state"]["colorMode"]
-        self._effects_list = data["effects"]["effectsList"]
-        self._effect = data["effects"]["select"]
-        self._panels = {Panel(panel) for panel in data["panelLayout"]["layout"]["positionData"]}
+        try:
+            self._effects_list = data["effects"]["effectsList"]
+        except KeyError:
+            _LOGGER.warning("Effects list is not available, try to get it from the API.")
+            self._effects_list = await self.get_effects()
+
+        try:
+            self._effect = data["effects"]["select"]
+        except KeyError:
+            _LOGGER.warning("Selected effect is not available, try to get it from the API.")
+            self._effect = await self.get_selected_effect()
+
+        try:
+            self._panels = {Panel(panel) for panel in data["panelLayout"]["layout"]["positionData"]}
+        except KeyError:
+            _LOGGER.warning("Panel layout not available, panels will not be populated.")
+            self._panels = set()
+
+    async def get_effects(
+        self
+    ) -> list[str]:
+        """Get the effects list."""
+        try:
+            resp = await self._request("get", "effects/effectsList")
+            data = await resp.json()
+
+            return data
+        except Unavailable:
+            return None
+
+    async def get_selected_effect(
+        self
+    ) -> str | None:
+        """Get the effects list."""
+        try:
+            resp = await self._request("get", "effects/select")
+            data = await resp.json()
+
+            return data
+        except Unavailable:
+            return None
 
     async def set_state(
         self,
